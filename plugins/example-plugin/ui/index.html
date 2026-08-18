@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Example Plugin</title>
+  <style>
+    :root {
+      --bg: #f7f8fa; --panel: #ffffff; --border: #e3e6eb; --text: #1f2430;
+      --muted: #6b7280; --accent: #2563eb; --accent-fg: #ffffff;
+      --ok: #16a34a; --warn: #d97706; --err: #dc2626; --run: #2563eb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12141a; --panel: #1b1e26; --border: #2b2f3a; --text: #e6e8ee;
+        --muted: #9aa2b1; --accent: #3b82f6;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 20px 16px 48px; }
+    h1 { font-size: 18px; margin: 0 0 2px; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+    .panel {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; margin-bottom: 16px;
+    }
+    .panel h2 { font-size: 14px; margin: 0 0 12px; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--muted); }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    select, input, button {
+      font: inherit; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    }
+    select, input { width: 100%; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .row > div { flex: 1 1 200px; }
+    button.primary {
+      background: var(--accent); color: var(--accent-fg); border-color: var(--accent);
+      cursor: pointer; font-weight: 600;
+    }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; }
+    button.ghost { background: transparent; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .s-queued { background: rgba(107,114,128,.15); color: var(--muted); }
+    .s-running { background: rgba(37,99,235,.15); color: var(--run); }
+    .s-completed { background: rgba(22,163,74,.15); color: var(--ok); }
+    .s-failed { background: rgba(220,38,38,.15); color: var(--err); }
+    .s-cancelled { background: rgba(217,119,6,.15); color: var(--warn); }
+    .bar { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+    .muted { color: var(--muted); }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; overflow: auto; font-size: 12px; margin: 0;
+    }
+    .err { color: var(--err); }
+    .table-scroll { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Example Plugin</h1>
+    <p class="sub">
+      Reference plugin — backend API, long-running jobs, and this embedded UI.
+      Everything below is fetched <strong>through the Rack Insight Core proxy</strong>;
+      the browser never contacts the plugin directly.
+    </p>
+
+    <div class="panel">
+      <h2>Run a job</h2>
+      <div class="row">
+        <div>
+          <label for="server">Target server (from Core inventory)</label>
+          <select id="server"><option value="">Loading inventory…</option></select>
+        </div>
+        <div>
+          <label for="action">Action</label>
+          <select id="action">
+            <option value="inspect">inspect</option>
+            <option value="collect">collect</option>
+            <option value="verify">verify</option>
+          </select>
+        </div>
+        <div style="flex: 0 0 auto;">
+          <button id="run" class="primary">Start job</button>
+        </div>
+      </div>
+      <p id="inv-err" class="err" style="display:none; margin: 10px 0 0;"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Jobs</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Action</th><th>Server</th><th>State</th><th>Progress</th><th></th></tr>
+          </thead>
+          <tbody id="jobs"><tr><td colspan="5" class="muted">No jobs yet.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel" id="results-panel" style="display:none;">
+      <h2>Results</h2>
+      <pre id="results"></pre>
+    </div>
+  </div>
+
+  <script>
+    // Derive the Core proxy base from our own URL. We are served at
+    //   /api/plugins/<name>/ui/...
+    // so the plugin root is everything before "/ui", and the Core inventory is a
+    // sibling of the plugin at /api/plugins/inventory/servers. Computing these at
+    // runtime means the plugin is not hardcoded to its own registered name.
+    const pluginRoot = location.pathname.replace(/\/ui(\/.*)?$/, "");   // /api/plugins/<name>
+    const proxyBase = pluginRoot + "/proxy";                            // -> plugin backend API
+    const pluginsRoot = pluginRoot.replace(/\/[^/]+$/, "");             // /api/plugins
+    const inventoryUrl = pluginsRoot + "/inventory/servers";
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    async function api(path, options) {
+      // Cookie auth: the Core minted a SameSite=Strict cookie for this iframe, so
+      // we must send credentials. No Authorization header is available here.
+      const res = await fetch(path, { credentials: "same-origin", ...options });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const ct = res.headers.get("content-type") || "";
+      return ct.includes("json") ? res.json() : res.text();
+    }
+
+    async function loadInventory() {
+      const sel = $("server");
+      try {
+        const rows = await api(inventoryUrl);
+        sel.innerHTML = '<option value="">(no target)</option>';
+        for (const s of rows) {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          const where = [s.rack, s.cluster].filter(Boolean).join(" / ");
+          opt.textContent = s.hostname + (where ? "  —  " + where : "");
+          sel.appendChild(opt);
+        }
+        if (!rows.length) sel.innerHTML = '<option value="">(inventory is empty)</option>';
+      } catch (e) {
+        sel.innerHTML = '<option value="">(unavailable)</option>';
+        const el = $("inv-err");
+        el.style.display = "block";
+        el.textContent = "Could not load Core inventory: " + e.message;
+      }
+    }
+
+    function stateTag(state) {
+      return '<span class="tag s-' + esc(state) + '">' + esc(state) + "</span>";
+    }
+
+    async function refreshJobs() {
+      let data;
+      try { data = await api(proxyBase + "/api/jobs"); }
+      catch { return; }
+      const jobs = data.jobs || [];
+      const tbody = $("jobs");
+      if (!jobs.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">No jobs yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = jobs.map((j) => `
+        <tr>
+          <td>${esc(j.action)}</td>
+          <td class="muted">${esc(j.serverId ? j.serverId.slice(0, 8) : "—")}</td>
+          <td>${stateTag(j.state)}</td>
+          <td style="min-width:120px">
+            <div class="bar"><i style="width:${j.progress || 0}%"></i></div>
+          </td>
+          <td>
+            ${j.state === "completed"
+              ? `<button class="ghost" data-results="${esc(j.id)}">Results</button>`
+              : (j.state === "queued" || j.state === "running")
+                ? `<button class="ghost" data-cancel="${esc(j.id)}">Cancel</button>`
+                : ""}
+          </td>
+        </tr>`).join("");
+    }
+
+    async function showResults(id) {
+      try {
+        const data = await api(proxyBase + "/api/jobs/" + id + "/results");
+        $("results-panel").style.display = "block";
+        $("results").textContent = JSON.stringify(data.results, null, 2);
+      } catch (e) {
+        $("results-panel").style.display = "block";
+        $("results").textContent = "Could not load results: " + e.message;
+      }
+    }
+
+    document.addEventListener("click", async (ev) => {
+      const rid = ev.target.getAttribute && ev.target.getAttribute("data-results");
+      const cid = ev.target.getAttribute && ev.target.getAttribute("data-cancel");
+      if (rid) showResults(rid);
+      if (cid) {
+        try { await api(proxyBase + "/api/jobs/" + cid + "/cancel", { method: "POST" }); }
+        catch {}
+        refreshJobs();
+      }
+    });
+
+    $("run").addEventListener("click", async () => {
+      const btn = $("run");
+      btn.disabled = true;
+      try {
+        await api(proxyBase + "/api/jobs", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            server_id: $("server").value || null,
+            action: $("action").value,
+          }),
+        });
+        refreshJobs();
+      } catch (e) {
+        alert("Could not start job: " + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    loadInventory();
+    refreshJobs();
+    setInterval(refreshJobs, 1500);
+  </script>
+</body>
+</html>

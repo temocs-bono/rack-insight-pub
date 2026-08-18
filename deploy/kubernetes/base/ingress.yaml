@@ -1,0 +1,53 @@
+# Single entry point for browsers. Replaces the docker-compose nginx service:
+#   /api, /docs, /openapi.json  -> backend:8000
+#   /                            -> frontend:80  (SPA)
+#
+# IMPORTANT: set `ingressClassName` and the annotations to match the Ingress
+# controller actually installed in your cluster. Verify with:
+#   kubectl get ingressclass
+# The annotations below are for the ingress-nginx controller; remove/adjust them
+# for Traefik, HAProxy, cloud controllers, etc. The host is a placeholder —
+# override it in the overlay (or point DNS/`/etc/hosts` at the ingress IP).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rack-insight
+  labels:
+    app.kubernetes.io/part-of: rack-insight
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+spec:
+  ingressClassName: nginx  # <-- change to your cluster's Ingress class
+  rules:
+    - host: rack-insight.testbed.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+          - path: /openapi.json
+            pathType: Exact
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

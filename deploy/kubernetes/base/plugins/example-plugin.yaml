@@ -1,0 +1,64 @@
+# Example plugin — an independent service the Core registers and proxies to.
+# The Core reaches it at the Service DNS name http://example-plugin:8080 (the
+# same URL used in docker-compose). Registration is via the plugins ConfigMap
+# (deploy/kubernetes/base/config/plugins-configmap.yaml), not this file.
+#
+# Scale replicas freely; the Service load-balances. Nothing in the Core changes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-plugin
+  labels:
+    app.kubernetes.io/name: example-plugin
+    app.kubernetes.io/part-of: rack-insight
+    rack-insight.io/component: plugin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-plugin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: example-plugin
+        rack-insight.io/component: plugin
+    spec:
+      containers:
+        - name: example-plugin
+          image: rack-insight-plugin-example
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-plugin
+  labels:
+    app.kubernetes.io/name: example-plugin
+    app.kubernetes.io/part-of: rack-insight
+spec:
+  selector:
+    app.kubernetes.io/name: example-plugin
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "example-plugin",
+    "endpoint": "http://example-plugin:8080",
+    "enabled": true,
+    "display_name": "Example Plugin"
+  }
+]

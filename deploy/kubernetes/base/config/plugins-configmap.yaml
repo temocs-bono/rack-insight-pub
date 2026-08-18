@@ -1,0 +1,20 @@
+# Plugin registry configuration (air-gap / GitOps friendly). Mounted into the
+# backend at /config/plugins.json (PLUGINS_CONFIG_FILE). Adding a plugin is a
+# ConfigMap edit — no Core image change. The Core reaches each plugin by its
+# Kubernetes Service DNS name.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rack-insight-plugins
+  labels:
+    app.kubernetes.io/part-of: rack-insight
+data:
+  plugins.json: |
+    [
+      {
+        "name": "example-plugin",
+        "endpoint": "http://example-plugin:8080",
+        "enabled": true,
+        "display_name": "Example Plugin"
+      }
+    ]

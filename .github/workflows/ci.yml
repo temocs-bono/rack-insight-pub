@@ -1,0 +1,114 @@
+# Rack Insight CI/CD.
+#
+#   Pull request (feature/*)  -> build + test only (NEVER deploys)
+#   Push to main              -> build + test, push images tagged with the commit
+#                                SHA to the registry, then update the testbed
+#                                overlay image tags in Git (GitOps). ArgoCD, which
+#                                tracks main, then syncs the cluster.
+#
+# Immutable tags only (commit SHA) — never :latest — so the cluster's running
+# version is always identifiable.
+#
+# Configure once in the repo settings:
+#   Variables : REGISTRY   (e.g. ghcr.io/<org>  or  registry.internal:5000)
+#   Secrets   : REGISTRY_USERNAME, REGISTRY_PASSWORD
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Backend tests
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt pytest pytest-asyncio
+          python -m pytest -q
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Frontend build (type-check + bundle)
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+  deploy:
+    name: Build, Push & GitOps update
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to push the GitOps image-tag bump back to main
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: echo "sha=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build & push images
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          TAG: ${{ steps.tag.outputs.sha }}
+        run: |
+          set -euo pipefail
+          for svc in \
+            "backend:backend" \
+            "frontend:frontend" \
+            "plugin-example:plugins/example-plugin"; do
+            name="${svc%%:*}"; ctx="${svc##*:}"
+            image="${REGISTRY}/rack-insight-${name}:${TAG}"
+            echo "==> $image"
+            docker build -t "$image" "$ctx"
+            docker push "$image"
+          done
+
+      - name: Update testbed overlay image tags (GitOps)
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          TAG: ${{ steps.tag.outputs.sha }}
+        working-directory: deploy/kubernetes/overlays/testbed
+        run: |
+          set -euo pipefail
+          curl -sSLo /usr/local/bin/kustomize.tar.gz \
+            https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+          tar -xzf /usr/local/bin/kustomize.tar.gz -C /usr/local/bin
+          for name in backend frontend plugin-example; do
+            kustomize edit set image \
+              "rack-insight-${name}=${REGISTRY}/rack-insight-${name}:${TAG}"
+          done
+
+      - name: Commit & push GitOps change
+        run: |
+          set -euo pipefail
+          git config user.name "rack-insight-ci"
+          git config user.email "ci@rack-insight.local"
+          if git diff --quiet; then
+            echo "No manifest change."; exit 0
+          fi
+          git add deploy/kubernetes/overlays/testbed/kustomization.yaml
+          # GITHUB_TOKEN pushes do not re-trigger workflows; [skip ci] is belt-and-braces.
+          git commit -m "ci: deploy ${{ steps.tag.outputs.sha }} to testbed [skip ci]"
+          git push

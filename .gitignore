@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+dist/
+
+# Env / secrets
+.env
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.tsbuildinfo
+
+# Offline deployment artifacts
+dist/

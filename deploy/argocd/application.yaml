@@ -1,0 +1,43 @@
+# ArgoCD Application for the Rack Insight testbed.
+#
+# GitOps model (single-repo): ArgoCD watches ONLY `main` at the testbed overlay
+# path. Feature branches are built/tested by CI but are NEVER auto-deployed.
+# There is deliberately no ApplicationSet / PR-preview generator.
+#
+#   main merge -> CI builds & pushes images (commit SHA tag)
+#              -> CI updates the overlay image tags on main (GitOps commit)
+#              -> ArgoCD detects the change and syncs the cluster
+#
+# Replace the placeholders below with your real values:
+#   spec.source.repoURL            -> your Git repo URL
+#   spec.destination.server        -> target cluster (in-cluster shown)
+# Apply with:  kubectl apply -n argocd -f deploy/argocd/application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rack-insight
+  namespace: argocd
+  # Keep resources until the Application is explicitly deleted.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/rack-insight.git  # <-- CHANGE ME
+    targetRevision: main          # CD tracks main only
+    path: deploy/kubernetes/overlays/testbed
+  destination:
+    server: https://kubernetes.default.svc   # in-cluster; change for a remote cluster
+    namespace: rack-insight
+  syncPolicy:
+    automated:
+      prune: true       # remove resources deleted from Git
+      selfHeal: true    # revert manual drift back to Git
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m

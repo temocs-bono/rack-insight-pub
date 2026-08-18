@@ -1,0 +1,17 @@
+# Headless Service — gives the StatefulSet stable DNS. The backend connects to
+# `postgres:5432` (matching DATABASE_URL), which resolves to the pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: rack-insight
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432

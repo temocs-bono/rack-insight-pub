@@ -1,0 +1,71 @@
+# Rack Insight backend (FastAPI). Stateless: no PVC. Applies Alembic migrations
+# on startup, so the startupProbe is generous. Reaches postgres/redis by Service
+# DNS using DATABASE_URL / REDIS_URL (unchanged from the app defaults).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/part-of: rack-insight
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend
+    spec:
+      terminationGracePeriodSeconds: 30
+      # Wait for the database before the app tries to migrate (avoids noisy
+      # CrashLoopBackOff on first boot). The app is still resilient without it.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command:
+            - sh
+            - -c
+            - "until pg_isready -h postgres -p 5432; do echo waiting for postgres; sleep 2; done"
+      containers:
+        - name: backend
+          image: rack-insight-backend
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: rack-insight-config
+            - secretRef:
+                name: rack-insight-secrets
+          volumeMounts:
+            - name: plugins-config
+              mountPath: /config
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 30   # up to ~2.5 min for migrations on first boot
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: plugins-config
+          configMap:
+            name: rack-insight-plugins

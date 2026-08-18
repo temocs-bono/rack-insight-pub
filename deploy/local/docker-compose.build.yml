@@ -1,0 +1,16 @@
+# Build override — used ONLY on an internet-connected machine.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+#
+# Build contexts are relative to this file (deploy/local), so they point back up
+# to the application source at the repository root. The runtime compose file is
+# image-only, so an air-gapped host never builds anything.
+services:
+  backend:
+    build: ../../backend
+
+  frontend:
+    build: ../../frontend
+
+  example-plugin:
+    build: ../../plugins/example-plugin

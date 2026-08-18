@@ -1,0 +1,42 @@
+# Rack Insight — Kubernetes base (Kustomize).
+#
+# Why Kustomize (not Helm)? It is built into kubectl and natively supported by
+# ArgoCD, so it adds no extra binary or chart repository — a good fit for
+# air-gapped clusters. Base + overlays give clean per-environment separation
+# (testbed / production / air-gapped) with image tags pinned per overlay.
+#
+# The Secret is intentionally NOT listed here: never commit real secrets. Apply
+# it separately from secrets/secret.example.yaml (or via sealed-secrets /
+# external-secrets). See docs/deployment.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rack-insight
+
+commonLabels:
+  app.kubernetes.io/part-of: rack-insight
+
+resources:
+  - namespace.yaml
+  - config/configmap.yaml
+  - config/plugins-configmap.yaml
+  - postgres/service.yaml
+  - postgres/statefulset.yaml
+  - redis/deployment.yaml
+  - redis/service.yaml
+  - backend/deployment.yaml
+  - backend/service.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - plugins/example-plugin.yaml
+  - ingress.yaml
+
+# Image names are pinned to an immutable tag in each overlay (set by CI to the
+# commit SHA). Never rely on :latest.
+images:
+  - name: rack-insight-backend
+    newTag: "1.4.0"
+  - name: rack-insight-frontend
+    newTag: "1.4.0"
+  - name: rack-insight-plugin-example
+    newTag: "1.4.0"
