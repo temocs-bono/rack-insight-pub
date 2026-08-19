@@ -1,4 +1,5 @@
 # Rack Insight
+ingi, temocs
 
 **Hardware & firmware inventory and operations platform for the datacenter.**
 
