@@ -6,30 +6,30 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
+- ../../base
 
 # Immutable image references. In CI, `kustomize edit set image` rewrites these
 # to the internal registry + the commit SHA on every push to main — never
 # :latest. Replace REGISTRY_PLACEHOLDER with your registry
 # (e.g. ghcr.io/<org>, registry.internal:5000).
 images:
-  - name: rack-insight-backend
-    newName: REGISTRY_PLACEHOLDER/rack-insight-backend
-    newTag: "1.4.0"
-  - name: rack-insight-frontend
-    newName: REGISTRY_PLACEHOLDER/rack-insight-frontend
-    newTag: "1.4.0"
-  - name: rack-insight-plugin-example
-    newName: REGISTRY_PLACEHOLDER/rack-insight-plugin-example
-    newTag: "1.4.0"
+- name: rack-insight-backend
+  newName: ghcr.io/temocs-bono/rack-insight-backend
+  newTag: sha-d9e0971
+- name: rack-insight-frontend
+  newName: ghcr.io/temocs-bono/rack-insight-frontend
+  newTag: sha-d9e0971
+- name: rack-insight-plugin-example
+  newName: ghcr.io/temocs-bono/rack-insight-plugin-example
+  newTag: sha-d9e0971
 
 # Per-environment tweaks are patches so the base stays generic.
-patches:
   # Point the Ingress at this environment's hostname.
-  - target:
-      kind: Ingress
-      name: rack-insight
-    patch: |
-      - op: replace
-        path: /spec/rules/0/host
-        value: rack-insight.testbed.local
+patches:
+- patch: |
+    - op: replace
+      path: /spec/rules/0/host
+      value: rack-insight.testbed.local
+  target:
+    kind: Ingress
+    name: rack-insight
