@@ -15,16 +15,17 @@ resources:
 images:
 - name: rack-insight-backend
   newName: ghcr.io/temocs-bono/rack-insight-backend
-  newTag: sha-5ef380f
+  newTag: sha-74a63a0
 - name: rack-insight-frontend
   newName: ghcr.io/temocs-bono/rack-insight-frontend
-  newTag: sha-5ef380f
+  newTag: sha-74a63a0
 - name: rack-insight-plugin-example
   newName: ghcr.io/temocs-bono/rack-insight-plugin-example
-  newTag: sha-5ef380f
+  newTag: sha-74a63a0
 
 # Per-environment tweaks are patches so the base stays generic.
   # Point the Ingress at this environment's hostname.
+
 
 patches:
 - patch: |-
@@ -33,7 +34,6 @@ patches:
   target:
     kind: Ingress
     name: rack-insight
-
 - patch: |-
     - op: add
       path: /spec/volumeClaimTemplates/0/spec/storageClassName
