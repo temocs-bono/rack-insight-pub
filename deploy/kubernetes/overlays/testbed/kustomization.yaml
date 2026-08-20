@@ -15,13 +15,13 @@ resources:
 images:
 - name: rack-insight-backend
   newName: ghcr.io/temocs-bono/rack-insight-backend
-  newTag: sha-3df9023
+  newTag: sha-5ef380f
 - name: rack-insight-frontend
   newName: ghcr.io/temocs-bono/rack-insight-frontend
-  newTag: sha-3df9023
+  newTag: sha-5ef380f
 - name: rack-insight-plugin-example
   newName: ghcr.io/temocs-bono/rack-insight-plugin-example
-  newTag: sha-3df9023
+  newTag: sha-5ef380f
 
 # Per-environment tweaks are patches so the base stays generic.
   # Point the Ingress at this environment's hostname.
