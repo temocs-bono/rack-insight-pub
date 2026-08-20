@@ -15,29 +15,29 @@ resources:
 images:
 - name: rack-insight-backend
   newName: ghcr.io/temocs-bono/rack-insight-backend
-  newTag: sha-5d11bc0
+  newTag: sha-3df9023
 - name: rack-insight-frontend
   newName: ghcr.io/temocs-bono/rack-insight-frontend
-  newTag: sha-5d11bc0
+  newTag: sha-3df9023
 - name: rack-insight-plugin-example
   newName: ghcr.io/temocs-bono/rack-insight-plugin-example
-  newTag: sha-5d11bc0
+  newTag: sha-3df9023
 
 # Per-environment tweaks are patches so the base stays generic.
   # Point the Ingress at this environment's hostname.
-patches:
-  - target:
-      kind: Ingress
-      name: rack-insight
-    patch: |
-      - op: replace
-        path: /spec/rules/0/host
-        value: rack-insight.testbed.local
 
-  - target:
-      kind: StatefulSet
-      name: postgres
-    patch: |-
-      - op: add
-        path: /spec/volumeClaimTemplates/0/spec/storageClassName
-        value: local-path
+patches:
+- patch: |
+    - op: replace
+      path: /spec/rules/0/host
+      value: rack-insight.testbed.local
+  target:
+    kind: Ingress
+    name: rack-insight
+- patch: |-
+    - op: add
+      path: /spec/volumeClaimTemplates/0/spec/storageClassName
+      value: local-path
+  target:
+    kind: StatefulSet
+    name: postgres
