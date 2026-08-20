@@ -15,8 +15,10 @@ metadata:
   labels:
     app.kubernetes.io/part-of: rack-insight
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.org/client-max-body-size: "50m"
+    nginx.org/proxy-read-timeout: "120s"
+    nginx.org/ssl-redirect: "false"
+    nginx.org/redirect-to-https: "false"
 spec:
   ingressClassName: nginx  # <-- change to your cluster's Ingress class
   rules:
