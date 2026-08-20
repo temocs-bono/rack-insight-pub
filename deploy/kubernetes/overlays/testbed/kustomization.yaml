@@ -26,10 +26,18 @@ images:
 # Per-environment tweaks are patches so the base stays generic.
   # Point the Ingress at this environment's hostname.
 patches:
-- patch: |
-    - op: replace
-      path: /spec/rules/0/host
-      value: rack-insight.testbed.local
-  target:
-    kind: Ingress
-    name: rack-insight
+  - target:
+      kind: Ingress
+      name: rack-insight
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: rack-insight.testbed.local
+
+  - target:
+      kind: StatefulSet
+      name: postgres
+    patch: |-
+      - op: add
+        path: /spec/volumeClaimTemplates/0/spec/storageClassName
+        value: local-path
