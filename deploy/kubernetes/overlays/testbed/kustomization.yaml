@@ -27,13 +27,13 @@ images:
   # Point the Ingress at this environment's hostname.
 
 patches:
-- patch: |
-    - op: replace
+- patch: |-
+    - op: remove
       path: /spec/rules/0/host
-      value: rack-insight.testbed.local
   target:
     kind: Ingress
     name: rack-insight
+
 - patch: |-
     - op: add
       path: /spec/volumeClaimTemplates/0/spec/storageClassName
