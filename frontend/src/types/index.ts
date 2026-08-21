@@ -155,6 +155,8 @@ export interface Device {
   model: string | null;
   management_ip: string | null;
   ilo_ip: string | null;
+  ilo_port: number;
+  ilo_use_https: boolean;
   ilo_username: string | null;
   ssh_username: string | null;
   status: DeviceStatus;

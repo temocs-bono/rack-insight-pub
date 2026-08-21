@@ -23,6 +23,8 @@ class DeviceCredentials:
     device_type: str
     management_ip: str | None = None
     ilo_ip: str | None = None
+    ilo_port: int = 443
+    ilo_use_https: bool = True
     ilo_username: str | None = None
     ilo_password: str | None = None
     ssh_username: str | None = None

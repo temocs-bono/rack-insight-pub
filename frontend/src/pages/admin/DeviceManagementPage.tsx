@@ -39,6 +39,8 @@ interface DeviceForm {
   model: string;
   management_ip: string;
   ilo_ip: string;
+  ilo_port: string;
+  ilo_use_https: boolean;
   orientation: DeviceOrientation;
   collector_types: string[];
   redfish_credential_id: string;
@@ -57,6 +59,8 @@ const EMPTY_FORM: DeviceForm = {
   model: "",
   management_ip: "",
   ilo_ip: "",
+  ilo_port: "443",
+  ilo_use_https: true,
   orientation: "FRONT",
   collector_types: [],
   redfish_credential_id: "",
@@ -129,6 +133,8 @@ export function DeviceManagementPage() {
       model: device.model ?? "",
       management_ip: device.management_ip ?? "",
       ilo_ip: device.ilo_ip ?? "",
+      ilo_port: String(device.ilo_port ?? 443),
+      ilo_use_https: device.ilo_use_https ?? true,
       orientation: device.orientation,
       collector_types: device.collector_types
         ? device.collector_types.split(",").filter(Boolean)
@@ -153,6 +159,8 @@ export function DeviceManagementPage() {
         model: form.model || null,
         management_ip: form.management_ip || null,
         ilo_ip: form.ilo_ip || null,
+        ilo_port: Number(form.ilo_port || 443),
+        ilo_use_https: form.ilo_use_https,
         orientation: form.orientation,
         collector_types: form.collector_types,
         redfish_credential_id: form.redfish_credential_id || null,
@@ -491,24 +499,64 @@ export function DeviceManagementPage() {
 
           {showRedfish && (
             <>
-              <Field label="iLO / BMC IP">
+              <Field label="Redfish Host">
                 <Input
                   value={form.ilo_ip}
-                  placeholder="192.168.x.x"
-                  onChange={(e) => setForm({ ...form, ilo_ip: e.target.value })}
+                  placeholder="10.0.0.10 or redfish-mock"
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      ilo_ip: e.target.value,
+                    })
+                  }
                 />
               </Field>
+
+              <Field label="Redfish Port">
+                <Input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={form.ilo_port}
+                  placeholder="443"
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      ilo_port: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+
+              <Field label="Redfish Protocol">
+                <Select
+                  value={form.ilo_use_https ? "https" : "http"}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      ilo_use_https: e.target.value === "https",
+                    })
+                  }
+                >
+                  <option value="https">HTTPS</option>
+                  <option value="http">HTTP</option>
+                </Select>
+              </Field>
+
               <Field label="Redfish Credential">
                 <Select
                   value={form.redfish_credential_id}
                   onChange={(e) =>
-                    setForm({ ...form, redfish_credential_id: e.target.value })
+                    setForm({
+                      ...form,
+                      redfish_credential_id: e.target.value,
+                    })
                   }
                 >
                   <option value="">(None)</option>
-                  {credentialOptions("REDFISH").map((cred) => (
-                    <option key={cred.id} value={cred.id}>
-                      {cred.name}
+                  {credentialOptions("REDFISH").map((credential) => (
+                    <option key={credential.id} value={credential.id}>
+                      {credential.name}
                     </option>
                   ))}
                 </Select>

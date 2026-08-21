@@ -76,9 +76,13 @@ def build_credentials(device: Device) -> DeviceCredentials:
         hostname=device.hostname,
         device_type=device.device_type.value,
         management_ip=device.management_ip,
+
         ilo_ip=device.ilo_ip,
+        ilo_port=device.ilo_port,
+        ilo_use_https=device.ilo_use_https,
         ilo_username=ilo_username,
         ilo_password=ilo_password,
+
         ssh_username=ssh_username,
         ssh_password=ssh_password,
         snmp_community=snmp_community,

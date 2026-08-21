@@ -21,6 +21,8 @@ class DeviceCreate(BaseModel):
     model: str | None = None
     management_ip: str | None = None
     ilo_ip: str | None = None
+    ilo_port: int = Field(default=443, ge=1, le=65535)
+    ilo_use_https: bool = True
     ilo_username: str | None = None
     ilo_password: str | None = None
     ssh_username: str | None = None
@@ -107,6 +109,8 @@ class DeviceUpdate(BaseModel):
     model: str | None = None
     management_ip: str | None = None
     ilo_ip: str | None = None
+    ilo_port: int | None = Field(default=None, ge=1, le=65535)
+    ilo_use_https: bool | None = None
     ilo_username: str | None = None
     ilo_password: str | None = None
     ssh_username: str | None = None
@@ -137,6 +141,8 @@ class DeviceResponse(BaseModel):
     model: str | None
     management_ip: str | None
     ilo_ip: str | None
+    ilo_port: int
+    ilo_use_https: bool
     ilo_username: str | None
     ssh_username: str | None
     status: DeviceStatus

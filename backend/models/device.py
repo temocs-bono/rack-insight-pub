@@ -13,7 +13,7 @@ import enum
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, Uuid
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import TimestampedModel
@@ -70,7 +70,9 @@ class Device(TimestampedModel):
     serial_override: Mapped[str | None] = mapped_column(String(128), nullable=True)
     description: Mapped[str | None] = mapped_column(String(512), nullable=True)
     management_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    ilo_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    ilo_ip: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ilo_port: Mapped[int] = mapped_column(default=443, nullable=False)
+    ilo_use_https: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     ilo_username: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ilo_password_encrypted: Mapped[str | None] = mapped_column(String(512), nullable=True)
     ssh_username: Mapped[str | None] = mapped_column(String(128), nullable=True)

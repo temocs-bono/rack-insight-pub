@@ -37,7 +37,8 @@ class RedfishCollector(BaseCollector):
 
     async def _collect(self, creds: DeviceCredentials) -> CollectorResult:
         result = CollectorResult(collector_name=self.name)
-        base_url = f"https://{creds.ilo_ip}"
+        scheme = "https" if creds.ilo_use_https else "http"
+        base_url = f"{scheme}://{creds.ilo_ip}:{creds.ilo_port}"
         auth = (creds.ilo_username or "", creds.ilo_password or "")
 
         async with httpx.AsyncClient(
